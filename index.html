@@ -17,7 +17,7 @@ main{max-width:1200px;margin:20px auto;padding:0 14px;display:grid;grid-template
 h2{font-size:17px;margin:0 0 14px}h3{font-size:13px;text-transform:uppercase;letter-spacing:.7px;color:#666;margin:20px 0 10px}
 label{display:block;font-size:12px;color:#555;margin:0 0 5px}
 input,textarea{font:14px Arial;width:100%;padding:10px 11px;border:1px solid #d7dbe0;border-radius:7px;background:white;color:#222;min-width:0}
-textarea{resize:vertical;min-height:55px}.field{margin-bottom:11px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+textarea{resize:vertical;min-height:55px}.resetbtn{background:#fff0f0;color:#b42318;border:1px solid #f2b8b5}.resetbtn:hover{background:#ffe2e0}.field{margin-bottom:11px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 button{font:600 14px Arial;border:0;border-radius:8px;padding:11px 14px;cursor:pointer;touch-action:manipulation}
 .primary{background:var(--red);color:white}.secondary{background:#eceef1;color:#222}.darkbtn{background:#292929;color:white}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.actions button{flex:1;min-width:85px}
@@ -29,26 +29,30 @@ button{font:600 14px Arial;border:0;border-radius:8px;padding:11px 14px;cursor:p
 @media(max-width:850px){main{grid-template-columns:1fr}.paper{padding:22px 18px;min-height:0}.invoice-head{gap:10px}.logo{font-size:27px}.logo .arrows{font-size:31px}.company{font-size:9px}.company strong{font-size:12px}.company .arabic-company{font-size:11px}.table{font-size:11px}.table th{font-size:11px}.table th,.table td{padding:5px 3px}.invoice-title{font-size:22px}.meta{font-size:12px}.customer{font-size:13px}.customer strong{font-size:14px}.words-row td{font-size:12px}.signatures{margin-top:45px}.footer{margin-top:35px}}
 @media(max-width:420px){.paper{padding:16px 10px}.invoice-head{grid-template-columns:.9fr 1.1fr}.logo{font-size:23px}.logo .arrows{font-size:26px}.logo small{font-size:8px;letter-spacing:3px}.company strong{font-size:10px}.meta{gap:10px;font-size:11px}.table{font-size:9px}.table th{font-size:9px}.table th,.table td{padding:4px 2px}.table .description{width:43%}.table .date{width:15%}.table .price{width:10%}.table .qty{width:8%}.table .amount{width:17%}.stamp{width:70px;height:70px}.manager{min-width:125px}.signatures{font-size:10px}}
 @page{size:A4 portrait;margin:0}
-@media print{body{background:white}.no-print,header,main>.panel,.preview-title{display:none!important}main{display:block;max-width:none;margin:0;padding:0}.preview-wrap{width:100%}.paper{width:210mm;height:297mm;max-width:none;min-height:0;margin:0;padding:18mm 19mm 13mm;box-shadow:none;page-break-after:avoid}.invoice-head{margin-bottom:4mm}.invoice-title{margin:1mm 0 3mm}.meta{margin-bottom:4mm}.customer{margin-bottom:5mm}.table th,.table td{padding:2mm 1.2mm}.table td{height:7mm}.table .blank td{height:7mm}.signatures{padding-top:8mm}.footer{margin-top:10mm;height:7mm}}
+@media print{body{background:white}.no-print,header,main>.panel,.preview-title{display:none!important}main{display:block;max-width:none;margin:0;padding:0}.preview-wrap{width:100%}.paper{width:210mm;height:auto;max-width:none;min-height:297mm;margin:0;padding:18mm 19mm 13mm;box-shadow:none;page-break-after:avoid}.invoice-head{margin-bottom:4mm}.invoice-title{margin:1mm 0 3mm}.meta{margin-bottom:4mm}.customer{margin-bottom:5mm}.table th,.table td{padding:2mm 1.2mm}.table tr{break-inside:avoid;page-break-inside:avoid}.table td{height:7mm}.table .blank td{height:7mm}.signatures{padding-top:8mm}.footer{margin-top:10mm;height:7mm}}
 
 .original-letterhead{display:block;margin:0 0 5mm;width:100%}
 .letterhead-image{display:block;width:100%;height:auto;object-fit:contain}
 @media(max-width:850px){.original-letterhead{margin-bottom:4mm}}
 @media print{.original-letterhead{margin-bottom:4mm}.letterhead-image{width:100%;height:auto}}
 
-</style>
+.settings-open{width:100%;margin:0 0 14px}.settings-dialog{border:0;border-radius:14px;padding:22px;width:min(92vw,520px);max-height:85vh;overflow:auto;box-shadow:0 18px 60px #0003}.settings-dialog::backdrop{background:#1119}.settings-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.settings-head h2{margin:0}.settings-dialog .hint{margin:12px 0 18px}</style>
 </head>
 <body>
 <header><div><div class="brand">See<span>Bas</span> Invoice Maker</div><div class="sub">Professional A4 invoices · Mobile & Desktop</div></div><div class="sub">See Bas Transport - L.L.C - S.P.C.</div></header>
 <main>
 <section class="panel no-print">
 <h2>Invoice details</h2>
-<div class="actions"><button class="primary" id="previewBtn">Preview</button><button class="darkbtn" id="printBtn">Print A4</button><button class="secondary" id="shareBtn">Share</button></div>
-<h3>Company details</h3>
+<div class="actions"><button class="primary" id="previewBtn">Preview</button><button class="darkbtn" id="printBtn">Print A4</button><button class="secondary" id="shareBtn">Share</button><button class="resetbtn" id="resetBtn" type="button">Reset Invoice</button></div>
+<button class="secondary settings-open" id="openCompanySettings" type="button">⚙ Company Settings (rarely needed)</button>
+<dialog id="companySettingsDialog" class="settings-dialog">
+<div class="settings-head"><h2>Company Settings</h2><button type="button" class="remove" id="closeCompanySettings">Close</button></div>
+<p class="hint">Update these details only when your company information changes. They are saved in this browser and are not part of each invoice's regular entry area.</p>
 <div class="field"><label>Company name</label><input id="companyName" value="SEE BAS TRANSPORT - L.L.C - S.P.C."></div>
 <div class="field"><label>Address</label><input id="companyAddress" value="MBZ City, Abu Dhabi, UAE"></div>
 <div class="two"><div class="field"><label>Phone</label><input id="phone" value="+971 50 312 1317"></div><div class="field"><label>Mobile</label><input id="mobile" value="+9712 55 656 88"></div></div>
 <div class="two"><div class="field"><label>Email</label><input id="email" value="info@seebastransport.com"></div><div class="field"><label>Website</label><input id="website" value="www.seebastransport.com"></div></div>
+</dialog>
 <h3>Invoice / customer</h3>
 <div class="two"><div class="field"><label>Invoice date</label><input id="invoiceDate" value="10.10.2026"></div><div class="field"><label>Invoice number</label><input id="invoiceNo" value="1021"></div></div>
 <div class="field"><label>Customer name</label><input id="customerName" value="M/s. GRAND COOL ELECTROMECHANICAL"></div>
@@ -59,7 +63,7 @@ button{font:600 14px Arial;border:0;border-radius:8px;padding:11px 14px;cursor:p
 <h3>Signature / stamp</h3>
 <div class="field"><label>Manager name / phone</label><input id="manager" value="050 9574374"></div>
 <div class="field"><label>Amount currency</label><input id="currency" value="AED"></div>
-<div class="hint">Your entries update the invoice preview automatically. Use Print A4 to print or choose “Save as PDF” in the print dialog. Share creates an actual PDF file and opens your device share sheet when supported. If not supported, it downloads the PDF.</div>
+<div class="hint">Company information is managed separately under Company Settings. Add as many invoice item rows as needed; the printed table grows automatically. Use Print A4 to print or choose “Save as PDF” in the print dialog. Share creates an actual PDF file and opens your device share sheet when supported. If not supported, it downloads the PDF.</div>
 </section>
 <section class="preview-wrap">
 <div class="preview-title no-print"><h2>Live A4 preview</h2><span style="font-size:12px;color:#777">Portrait · A4</span></div>
@@ -88,13 +92,27 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const money=n=>(Number(n)||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 function amountWords(value){let n=Math.round((Number(value)||0)*100)/100;let whole=Math.floor(n),cents=Math.round((n-whole)*100);const ones=["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"],tens=["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];function words(x){if(x<20)return ones[x];if(x<100)return tens[Math.floor(x/10)]+(x%10?" "+ones[x%10]:"");if(x<1000)return ones[Math.floor(x/100)]+" Hundred"+(x%100?" "+words(x%100):"");if(x<1000000)return words(Math.floor(x/1000))+" Thousand"+(x%1000?" "+words(x%1000):"");if(x<1000000000)return words(Math.floor(x/1000000))+" Million"+(x%1000000?" "+words(x%1000000):"");return String(x)}return (whole?words(whole):"Zero")+(cents?" and "+words(cents)+" Fils":"")+" Only"}
 function renderEditors(){ $("items").innerHTML=data.map((x,i)=>`<div class="item-editor"><div class="rowtop"><div><label>Item ${i+1} date</label><input data-i="${i}" data-k="date" value="${esc(x.date)}" placeholder="DD/MM/YYYY"></div><div><label>Description</label><input class="desc" data-i="${i}" data-k="desc" value="${esc(x.desc)}"></div></div><div class="rowbottom"><div><label>Price</label><input type="number" min="0" step=".01" data-i="${i}" data-k="price" value="${x.price}"></div><div><label>Quantity</label><input type="number" min="0" step=".01" data-i="${i}" data-k="qty" value="${x.qty}"></div><button class="remove" data-remove="${i}" title="Remove item">✕</button></div></div>`).join("");}
-function renderPreview(){const vals=["invoiceDate","invoiceNo","customerName","customerAddress","manager","website"];const map={invoiceDate:"pDate",invoiceNo:"pNo",customerName:"pCustomer",customerAddress:"pCustomerAddress",manager:"pManager",website:"pWebsite"};vals.forEach(k=>{const target=$(map[k]);if(target)target.textContent=$(k).value});let total=0;const rows=data.map((x,i)=>{let amount=(Number(x.price)||0)*(Number(x.qty)||0);total+=amount;return `<tr><td>${i+1}</td><td>${esc(x.date)}</td><td class="desc">${esc(x.desc)}</td><td>${money(x.price)}</td><td>${money(x.qty)}</td><td>${money(amount)}</td></tr>`}).join("");const blanks=Math.max(0,10-data.length);$("previewRows").innerHTML=rows+Array.from({length:blanks},()=>'<tr class="blank"><td>&nbsp;</td><td></td><td class="desc"></td><td></td><td></td><td></td></tr>').join("");$("pTotal").textContent=$("pTotal2").textContent=money(total);$("pWords").textContent=amountWords(total);document.title="Invoice "+$("invoiceNo").value+" - See Bas Transport";}
+function renderPreview(){const vals=["invoiceDate","invoiceNo","customerName","customerAddress","manager","website"];const map={invoiceDate:"pDate",invoiceNo:"pNo",customerName:"pCustomer",customerAddress:"pCustomerAddress",manager:"pManager",website:"pWebsite"};vals.forEach(k=>{const target=$(map[k]);if(target)target.textContent=$(k).value});let total=0;const rows=data.map((x,i)=>{let amount=(Number(x.price)||0)*(Number(x.qty)||0);total+=amount;return `<tr><td>${i+1}</td><td>${esc(x.date)}</td><td class="desc">${esc(x.desc)}</td><td>${money(x.price)}</td><td>${money(x.qty)}</td><td>${money(amount)}</td></tr>`}).join("");$("previewRows").innerHTML=rows;$("pTotal").textContent=$("pTotal2").textContent=money(total);$("pWords").textContent=amountWords(total);document.title="Invoice "+$("invoiceNo").value+" - See Bas Transport";}
 function update(){renderPreview();try{localStorage.setItem("seebas_invoice_draft",JSON.stringify({fields:Object.fromEntries(["companyName","companyAddress","phone","mobile","email","website","invoiceDate","invoiceNo","customerName","customerAddress","manager","currency"].map(k=>[k,$(k).value])),data}))}catch(e){}}
 $("items").addEventListener("input",e=>{let t=e.target;if(t.dataset.i!==undefined){data[Number(t.dataset.i)][t.dataset.k]=t.dataset.k==="price"||t.dataset.k==="qty"?Number(t.value):t.value;update()}});
 $("items").addEventListener("click",e=>{let b=e.target.closest("[data-remove]");if(b){data.splice(Number(b.dataset.remove),1);renderEditors();update()}});
 $("addItem").onclick=()=>{data.push({date:"",desc:"",price:0,qty:1});renderEditors();update();$("items").lastElementChild?.scrollIntoView({behavior:"smooth",block:"nearest"})};
 ["companyName","companyAddress","phone","mobile","email","website","invoiceDate","invoiceNo","customerName","customerAddress","manager","currency"].forEach(k=>$(k).addEventListener("input",update));
+$("openCompanySettings").onclick=()=>$("companySettingsDialog").showModal();
+$("closeCompanySettings").onclick=()=>$("companySettingsDialog").close();
 $("previewBtn").onclick=()=>{$("paper").scrollIntoView({behavior:"smooth",block:"start"})};
+$("resetBtn").onclick=()=>{
+  if(!confirm("Reset this invoice? Customer details and all invoice items will be cleared. Company details will be kept.")) return;
+  const now=new Date();
+  $("invoiceDate").value=String(now.getDate()).padStart(2,"0")+"."+String(now.getMonth()+1).padStart(2,"0")+"."+now.getFullYear();
+  $("invoiceNo").value="";
+  $("customerName").value="";
+  $("customerAddress").value="";
+  data=[];
+  renderEditors();
+  update();
+  $("invoiceNo").focus();
+};
 async function makeInvoicePDF(){
   if(!window.html2canvas || !window.jspdf) throw new Error("PDF tools need an internet connection. Please reconnect and try again.");
   update();
