@@ -216,6 +216,18 @@ async function createInvoicePdfBlob(){
   // Keep stamp/signature aspect ratio and position exactly as arranged in the preview.
   clone.querySelectorAll("#dynamicStamp,#dynamicSignature").forEach(el=>{el.style.objectFit="contain";el.style.filter="none";el.style.outline="none";el.style.maxWidth="none";});
   clone.querySelectorAll(".editable").forEach(el=>{el.style.outline="none";el.style.background="transparent";});
+  // PDF rendering uses screen media, so explicitly apply readable A4 typography here
+  // instead of relying on @media print rules that html2canvas does not activate.
+  clone.querySelectorAll(".overlay").forEach(el=>{el.style.fontFamily="Arial, sans-serif";el.style.fontSize="10px";el.style.lineHeight="1.15";});
+  clone.querySelectorAll(".thead").forEach(el=>{el.style.fontSize="10px";el.style.lineHeight="1.15";});
+  clone.querySelectorAll(".thead div").forEach(el=>{el.style.padding="5px 2px";});
+  clone.querySelectorAll(".tr").forEach(el=>{el.style.fontSize="10px";el.style.lineHeight="1.15";el.style.minHeight="30px";});
+  clone.querySelectorAll(".tr > div").forEach(el=>{el.style.padding="4px 3px";});
+  clone.querySelectorAll(".tr > div:nth-child(2), .tr textarea, .tr input").forEach(el=>{el.style.fontFamily="Arial, sans-serif";el.style.fontSize="10px";el.style.lineHeight="1.15";});
+  clone.querySelectorAll(".sumrow").forEach(el=>{el.style.fontSize="10px";el.style.lineHeight="1.15";});
+  clone.querySelectorAll(".sumrow span").forEach(el=>{el.style.padding="3px 5px";});
+  const words=clone.querySelector("#pWords");if(words){words.style.fontFamily="Arial, sans-serif";words.style.fontSize="9px";words.style.lineHeight="1.2";}
+  clone.querySelectorAll("#dynamicStamp,#dynamicSignature").forEach(el=>{el.style.transform="none";el.style.objectFit="contain";el.style.objectPosition="center center";});
   clone.querySelectorAll("*").forEach(el=>{el.style.pointerEvents="none";});
   const holder=document.createElement("div");holder.style.cssText="position:fixed;left:-20000px;top:0;width:794px;height:1123px;overflow:hidden;background:#fff;z-index:-1";holder.appendChild(clone);document.body.appendChild(holder);
   try{
