@@ -93,7 +93,16 @@ body.preview-mode .paper{width:100%;max-width:595px}
 }
 
 @page{size:A4 portrait;margin:0}
-@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{background:white}.top,.panel{display:none!important}.wrap{display:block;margin:0;padding:0;max-width:none}.paper{width:210mm;height:297mm;max-width:none;box-shadow:none;break-inside:avoid}.editable{outline:none!important}.bg{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  html,body{width:210mm!important;min-width:0!important;margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important}
+  .top,.panel,#arrangeStatus{display:none!important}
+  .wrap,body.preview-mode .wrap{display:block!important;width:210mm!important;max-width:none!important;margin:0!important;padding:0!important;overflow:visible!important}
+  .preview,body:not(.preview-mode) .preview{display:block!important;width:210mm!important;margin:0!important;padding:0!important;overflow:visible!important}
+  .paper,body.preview-mode .paper{display:block!important;position:relative!important;width:210mm!important;height:297mm!important;max-width:none!important;aspect-ratio:auto!important;margin:0!important;box-shadow:none!important;overflow:hidden!important;break-inside:avoid!important;page-break-inside:avoid!important}
+  .editable{outline:none!important}
+  .bg{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}
 .overlay{position:absolute;z-index:2}.stamp-sign-clear{position:absolute;left:15%;top:73%;width:18%;height:10%;object-fit:contain;z-index:3;pointer-events:none}.signature-art{position:absolute;left:36%;top:75%;width:23%;height:8%;object-fit:contain;z-index:3;pointer-events:none}
 </style></head>
 <body>
@@ -180,7 +189,26 @@ function addRow(){items.push({desc:"",qty:1,rate:0});renderEditor();render()}
 function renderEditor(){document.getElementById("editorRows").innerHTML=items.map((x,i)=>`<div style="border:1px solid #ddd;padding:8px;margin:7px 0;border-radius:7px"><b>Item ${i+1}</b><label>Description</label><textarea oninput="items[${i}].desc=this.value;render()">${esc(x.desc)}</textarea><div class="row"><div><label>Qty / trip</label><input type="number" min="0" step="any" value="${x.qty}" oninput="items[${i}].qty=+this.value;render()"></div><div><label>Rate (AED)</label><input type="number" min="0" step="any" value="${x.rate}" oninput="items[${i}].rate=+this.value;render()"></div></div><button class="secondary" style="margin-top:7px" onclick="items.splice(${i},1);renderEditor();render()">Remove item</button></div>`).join("")}
 function showPreview(){render();document.body.classList.add("preview-mode");document.getElementById("btnPreview").hidden=true;document.getElementById("btnEdit").hidden=false;document.getElementById("btnPrint").hidden=false;document.getElementById("btnShare").hidden=false;document.getElementById("btnArrange").hidden=false;document.getElementById("btnSave").hidden=true;document.getElementById("btnHistory").hidden=true;document.getElementById("btnReset").hidden=true;window.scrollTo({top:0,behavior:"smooth"})}
 function showEditor(){if(document.getElementById("paper").classList.contains("arranging"))toggleArrange();document.body.classList.remove("preview-mode");document.getElementById("btnPreview").hidden=false;document.getElementById("btnEdit").hidden=true;document.getElementById("btnPrint").hidden=true;document.getElementById("btnShare").hidden=true;document.getElementById("btnArrange").hidden=true;document.getElementById("btnSave").hidden=false;document.getElementById("btnHistory").hidden=false;document.getElementById("btnReset").hidden=false;window.scrollTo({top:0,behavior:"smooth"})}
-function printInvoice(){if(!document.body.classList.contains("preview-mode"))showPreview();if(document.getElementById("paper").classList.contains("arranging"))toggleArrange();setTimeout(()=>window.print(),120)}
+function printInvoice(){
+  // Must call print synchronously from the user's tap; delayed calls can be blocked on iPhone Safari.
+  const paper=document.getElementById("paper");
+  if(paper.classList.contains("arranging"))toggleArrange();
+  render();
+  if(!document.body.classList.contains("preview-mode")){
+    document.body.classList.add("preview-mode");
+    document.getElementById("btnPreview").hidden=true;
+    document.getElementById("btnEdit").hidden=false;
+    document.getElementById("btnPrint").hidden=false;
+    document.getElementById("btnShare").hidden=false;
+    document.getElementById("btnArrange").hidden=false;
+    document.getElementById("btnSave").hidden=true;
+    document.getElementById("btnHistory").hidden=true;
+    document.getElementById("btnReset").hidden=true;
+  }
+  if(typeof window.print!=="function"){alert("Printing is not supported in this browser. Open this invoice in Safari or Chrome and try again.");return}
+  window.focus();
+  window.print();
+}
 function money(n){return Number(n||0).toFixed(2)}
 function amountInWordsAED(value){
   const n = Math.round((Number(value)||0)*100)/100;
@@ -307,15 +335,25 @@ async function openSavedInvoice(encodedNo){
 }
 function deleteSavedInvoice(encodedNo){let no=decodeURIComponent(encodedNo);if(!confirm("Delete the local saved copy of invoice "+no+"? This does not delete the Google Sheets record."))return;try{localStorage.setItem("zeeInvoiceHistory",JSON.stringify(localInvoices().filter(x=>String(x.invoiceNo)!==String(no))))}catch(e){}loadHistory()}
 function shareInvoice(){
-  // PDF-only sharing: open the browser's print dialog for the complete A4 invoice.
-  // On iPhone Safari, use the print preview's Share action to send the PDF.
-  try{
-    const paper=document.getElementById("paper");
-    if(!document.body.classList.contains("preview-mode"))showPreview();
-    if(paper.classList.contains("arranging"))toggleArrange();
-    setHistoryStatus("Preparing the A4 invoice for PDF sharing. In the print screen, open the preview and tap Share to send the PDF.");
-    setTimeout(()=>window.print(),120);
-  }catch(e){setHistoryStatus("Could not open PDF print preview: "+e.message)}
+  // PDF-only sharing: open the native browser print interface directly from the tap.
+  // Desktop: choose Save as PDF. iPhone: open/expand the print preview, tap Share, then Save to Files or WhatsApp.
+  const paper=document.getElementById("paper");
+  if(paper.classList.contains("arranging"))toggleArrange();
+  render();
+  if(!document.body.classList.contains("preview-mode")){
+    document.body.classList.add("preview-mode");
+    document.getElementById("btnPreview").hidden=true;
+    document.getElementById("btnEdit").hidden=false;
+    document.getElementById("btnPrint").hidden=false;
+    document.getElementById("btnShare").hidden=false;
+    document.getElementById("btnArrange").hidden=false;
+    document.getElementById("btnSave").hidden=true;
+    document.getElementById("btnHistory").hidden=true;
+    document.getElementById("btnReset").hidden=true;
+  }
+  if(typeof window.print!=="function"){alert("PDF sharing needs a browser that supports printing. Open this invoice in Safari or Chrome.");return}
+  window.focus();
+  window.print();
 }
 function toggleArrange(){let paper=document.getElementById("paper"),on=!paper.classList.contains("arranging");paper.classList.toggle("arranging",on);document.getElementById("arrangeStatus").style.display=on?"block":"none";setHistoryStatus(on?"Arrange mode ON: drag the stamp or signature on the preview.":"Arrange mode OFF. Your stamp and signature positions are saved.")}
 const DEFAULT_SIGNATURE_SRC=document.getElementById("dynamicSignature").getAttribute("src");
