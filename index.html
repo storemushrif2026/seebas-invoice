@@ -241,8 +241,20 @@ async function createInvoicePdfBlob(){
 }
 async function printInvoice(){
   const button=document.getElementById("btnPrint"),old=button?button.textContent:"";
-  try{if(button){button.disabled=true;button.textContent="Creating PDF…"}const blob=await createInvoicePdfBlob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=safeInvoiceFilename();a.style.display="none";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);setHistoryStatus("PDF created. On iPhone, check Downloads or the Files app.")}
-  catch(e){alert("Could not create PDF: "+e.message);setHistoryStatus("PDF error: "+e.message)}
+  // Open synchronously from the tap so iOS Safari does not block the PDF preview as a popup.
+  let previewWindow=null;
+  try{previewWindow=window.open("about:blank","_blank");}catch(e){}
+  try{
+    if(button){button.disabled=true;button.textContent="Creating PDF…"}
+    const blob=await createInvoicePdfBlob();
+    const url=URL.createObjectURL(blob);
+    if(previewWindow&&!previewWindow.closed){previewWindow.location.href=url;setTimeout(()=>URL.revokeObjectURL(url),10*60*1000);setHistoryStatus("PDF opened. Use the browser Share/Download controls to save it.");}
+    else {
+      // If popups are blocked, navigate the current page to the generated PDF instead of relying on a download attribute.
+      const a=document.createElement("a");a.href=url;a.download=safeInvoiceFilename();a.target="_blank";a.rel="noopener";a.style.display="none";document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),10*60*1000);setHistoryStatus("PDF prepared. If it did not download, allow popups for this site and try again.");
+    }
+  }catch(e){if(previewWindow&&!previewWindow.closed)previewWindow.close();alert("Could not create PDF: "+(e.message||e));setHistoryStatus("PDF error: "+(e.message||e))}
   finally{if(button){button.disabled=false;button.textContent=old||"Save PDF"}}
 }
 function money(n){return Number(n||0).toFixed(2)}
@@ -372,15 +384,23 @@ async function openSavedInvoice(encodedNo){
 function deleteSavedInvoice(encodedNo){let no=decodeURIComponent(encodedNo);if(!confirm("Delete the local saved copy of invoice "+no+"? This does not delete the Google Sheets record."))return;try{localStorage.setItem("zeeInvoiceHistory",JSON.stringify(localInvoices().filter(x=>String(x.invoiceNo)!==String(no))))}catch(e){}loadHistory()}
 async function shareInvoice(){
   const button=document.getElementById("btnShare"),old=button?button.textContent:"";
+  // Reserve a tab immediately in the user gesture; this is the reliable iOS Safari fallback.
+  let previewWindow=null;
+  try{previewWindow=window.open("about:blank","_blank");}catch(e){}
+  let blobUrl=null;
   try{
     if(button){button.disabled=true;button.textContent="Preparing PDF…"}
-    const blob=await createInvoicePdfBlob();const file=new File([blob],safeInvoiceFilename(),{type:"application/pdf"});
+    const blob=await createInvoicePdfBlob();
+    const file=new File([blob],safeInvoiceFilename(),{type:"application/pdf"});
     if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:"See Bas Tax Invoice"});setHistoryStatus("PDF shared successfully.");return;
+      try{await navigator.share({files:[file],title:"See Bas Tax Invoice"});if(previewWindow&&!previewWindow.closed)previewWindow.close();setHistoryStatus("PDF shared successfully.");return;}
+      catch(shareError){if(shareError&&shareError.name==="AbortError"){if(previewWindow&&!previewWindow.closed)previewWindow.close();setHistoryStatus("Sharing cancelled.");return;}}
     }
-    const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=safeInvoiceFilename();a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-    alert("Your PDF has been created. If the iPhone share sheet did not open, open the downloaded PDF in Files and tap Share.");setHistoryStatus("PDF created and downloaded. Open it from Files to share.");
-  }catch(e){if(e&&e.name==="AbortError"){setHistoryStatus("Sharing cancelled.");return}alert("Could not share PDF: "+(e.message||e));setHistoryStatus("PDF sharing error: "+(e.message||e))}
+    blobUrl=URL.createObjectURL(blob);
+    if(previewWindow&&!previewWindow.closed){previewWindow.location.href=blobUrl;setHistoryStatus("PDF opened. On iPhone, tap Share, then Save to Files or choose WhatsApp.");}
+    else {const a=document.createElement("a");a.href=blobUrl;a.download=safeInvoiceFilename();a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();setHistoryStatus("PDF prepared. If it did not open, allow popups for this site and try again.");}
+    setTimeout(()=>{if(blobUrl)URL.revokeObjectURL(blobUrl)},10*60*1000);
+  }catch(e){if(previewWindow&&!previewWindow.closed)previewWindow.close();alert("Could not share PDF: "+(e.message||e));setHistoryStatus("PDF sharing error: "+(e.message||e))}
   finally{if(button){button.disabled=false;button.textContent=old||"Share PDF"}}
 }
 function toggleArrange(){let paper=document.getElementById("paper"),on=!paper.classList.contains("arranging");paper.classList.toggle("arranging",on);document.getElementById("arrangeStatus").style.display=on?"block":"none";setHistoryStatus(on?"Arrange mode ON: drag the stamp or signature on the preview.":"Arrange mode OFF. Your stamp and signature positions are saved.")}
