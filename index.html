@@ -44,7 +44,7 @@ textarea{min-height:72px;resize:vertical}.row{display:grid;grid-template-columns
   .overlay{font-size:clamp(5px,1.65vw,7px)}
   .tr textarea{font-size:inherit}
 }
-#dynamicStamp,#dynamicSignature{touch-action:none}
+#dynamicStamp,#dynamicSignature{touch-action:none;object-fit:contain;object-position:center center;max-width:none;max-height:none}
 .paper.arranging #dynamicStamp,.paper.arranging #dynamicSignature{pointer-events:auto;cursor:move;outline:2px dashed #1769aa;outline-offset:2px;filter:drop-shadow(0 0 2px #fff)}
 #arrangeStatus{display:none;padding:8px;background:#eaf3ff;border-radius:7px;color:#174a7e;font-size:12px}
 @media print{.top,.panel,#arrangeStatus{display:none!important}#dynamicStamp,#dynamicSignature{pointer-events:none!important;outline:none!important;filter:none!important}}
@@ -155,7 +155,7 @@ body.preview-mode .paper{width:100%;max-width:595px}
 <label>Horizontal position</label><input id="stampLeft" type="range" min="0" max="70" value="15" step="0.5" oninput="updateStamp()">
 <label>Vertical position</label><input id="stampTop" type="range" min="55" max="88" value="73" step="0.5" oninput="updateStamp()">
 <label>Stamp width</label><input id="stampWidth" type="range" min="15" max="65" value="18" step="1" oninput="updateStamp()">
-<label>Stamp height</label><input id="stampHeight" type="range" min="6" max="22" value="10" step="0.5" oninput="updateStamp()">
+<label>Stamp height</label><input id="stampHeight" type="range" min="6" max="22" value="12.7" step="0.5" oninput="updateStamp()">
 <button type="button" class="secondary" onclick="resetStampPosition()">Reset stamp position</button>
 <p class="note">Use these sliders to move or resize the new stamp on the A4 preview. These controls do not change the invoice totals or letterhead.</p>
 </section>
@@ -295,7 +295,29 @@ function amountInWordsAED(value){
 function render(){document.getElementById("pCustomer").textContent=document.getElementById("customer").value;document.getElementById("pAddress").textContent=document.getElementById("address").value;document.getElementById("pCtrn").textContent="TRN: "+document.getElementById("ctrn").value;document.getElementById("pInvno").textContent=document.getElementById("invno").value;let d=document.getElementById("invdate").value;document.getElementById("pInvdate").textContent=d?d.split("-").reverse().join("."):"";document.getElementById("pRows").innerHTML=items.map((x,i)=>`<div class="tr"><div>${i+1}</div><div>${esc(x.desc).replace(/\n/g,"<br>")}</div><div>${x.qty}</div><div>${money(x.rate)}</div><div>${money(x.qty*x.rate)}</div></div>`).join("");let sub=items.reduce((a,x)=>a+(+x.qty||0)*(+x.rate||0),0),vat=sub*(+document.getElementById("vatRate").value||0)/100;document.getElementById("subtotal").textContent=money(sub);document.getElementById("vatAmount").textContent=money(vat);document.getElementById("grand").textContent=money(sub+vat);document.getElementById("pVat").textContent=document.getElementById("vatRate").value;document.getElementById("words").value=amountInWordsAED(sub+vat);document.getElementById("pWords").textContent=document.getElementById("words").value}
 function resetInvoice(){if(!confirm("Clear this invoice's customer, number and items?"))return;document.getElementById("customer").value="";document.getElementById("address").value="";document.getElementById("ctrn").value="";document.getElementById("invno").value=makeInvoiceNo();items=[{desc:"",qty:1,rate:0}];document.getElementById("words").value="";renderEditor();render()}
 const DEFAULT_STAMP_SRC = document.getElementById("dynamicStamp").getAttribute("src");
-function loadSavedStampImage(){try{const saved=localStorage.getItem("zeeInvoiceStampImage_v6");if(saved)document.getElementById("dynamicStamp").src=saved;}catch(e){}}
+function loadSavedStampImage(){
+  // A previous iPhone version stored a tall PNG with large transparent margins.
+  // Do not let that stale image override the newly embedded square stamp.
+  try{
+    const saved=localStorage.getItem("zeeInvoiceStampImage_v6");
+    if(!saved)return;
+    const probe=new Image();
+    probe.onload=function(){
+      const ratio=probe.naturalWidth/(probe.naturalHeight||1);
+      if(ratio<0.80||ratio>1.20){
+        localStorage.removeItem("zeeInvoiceStampImage_v6");
+        localStorage.removeItem("zeeInvoiceStampImage");
+        // Keep the clean, square stamp embedded in this app version.
+        const stamp=document.getElementById("dynamicStamp");
+        stamp.src=DEFAULT_STAMP_SRC;
+        return;
+      }
+      document.getElementById("dynamicStamp").src=saved;
+    };
+    probe.onerror=function(){try{localStorage.removeItem("zeeInvoiceStampImage_v6");}catch(e){}};
+    probe.src=saved;
+  }catch(e){}
+}
 function resetStampImage(){try{localStorage.removeItem("zeeInvoiceStampImage_v6");localStorage.removeItem("zeeInvoiceStampImage");}catch(e){}document.getElementById("dynamicStamp").src=DEFAULT_STAMP_SRC;document.getElementById("stampUpload").value="";}
 document.getElementById("stampUpload").addEventListener("change",function(e){
  const file=e.target.files&&e.target.files[0];if(!file)return;
@@ -312,7 +334,7 @@ function updateStamp(){
  img.style.left=left+"%"; img.style.top=top+"%"; img.style.width=width+"%"; img.style.height=height+"%";
  try{localStorage.setItem("zeeInvoiceStamp",JSON.stringify({left,top,width,height}));}catch(e){}
 }
-function resetStampPosition(){document.getElementById("stampLeft").value=10.5;document.getElementById("stampTop").value=78.5;document.getElementById("stampWidth").value=27;document.getElementById("stampHeight").value=12;updateStamp();}
+function resetStampPosition(){document.getElementById("stampLeft").value=10.5;document.getElementById("stampTop").value=78.5;document.getElementById("stampWidth").value=18;document.getElementById("stampHeight").value=12.7;updateStamp();}
 try{const stampSettings=JSON.parse(localStorage.getItem("zeeInvoiceStamp")||"null");if(stampSettings){for(const k of ["left","top","width","height"]){const el=document.getElementById("stamp"+k[0].toUpperCase()+k.slice(1));if(el&&stampSettings[k]!==undefined)el.value=stampSettings[k];}}}catch(e){}
 loadSavedStampImage();
 updateStamp();
