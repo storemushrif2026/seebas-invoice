@@ -150,7 +150,7 @@ body.preview-mode .paper{width:100%;max-width:595px}
 </select>
 <p class="note">Choose either of your two saved signatures. The selected signature appears on the print preview and can be moved in Arrange mode.</p>
 <label>Or upload another signature image (PNG/JPG/WebP)</label><input id="signatureUpload" type="file" accept="image/png,image/jpeg,image/webp"><div class="row"><button type="button" class="secondary" onclick="resetSignatureImage()">Restore default signature</button></div><p class="note">Your selected signature is saved in this browser and included in the A4 print preview. Signature 1 and Signature 2 are built in; you can also upload a custom signature.</p>
-<h3>Signature Position & Size</h3><label>Horizontal position</label><input id="sigLeft" type="range" min="0" max="75" value="36" step="0.5" oninput="updateSignature()"><label>Vertical position</label><input id="sigTop" type="range" min="55" max="90" value="75" step="0.5" oninput="updateSignature()"><label>Signature width</label><input id="sigWidth" type="range" min="10" max="50" value="23" step="1" oninput="updateSignature()"><label>Signature height</label><input id="sigHeight" type="range" min="4" max="18" value="8" step="0.5" oninput="updateSignature()"><button type="button" class="secondary" onclick="resetSignaturePosition()">Reset signature position</button>
+<h3>Signature Position & Size</h3><label>Horizontal position</label><input id="sigLeft" type="range" min="0" max="75" value="44" step="0.5" oninput="updateSignature()"><label>Vertical position</label><input id="sigTop" type="range" min="55" max="90" value="78" step="0.5" oninput="updateSignature()"><label>Signature width</label><input id="sigWidth" type="range" min="10" max="50" value="18" step="1" oninput="updateSignature()"><label>Signature height</label><input id="sigHeight" type="range" min="4" max="18" value="7" step="0.5" oninput="updateSignature()"><button type="button" class="secondary" onclick="resetSignaturePosition()">Reset signature position</button>
 <h2>Stamp Position & Size</h2>
 <label>Horizontal position</label><input id="stampLeft" type="range" min="0" max="70" value="15" step="0.5" oninput="updateStamp()">
 <label>Vertical position</label><input id="stampTop" type="range" min="55" max="88" value="73" step="0.5" oninput="updateStamp()">
@@ -227,7 +227,15 @@ async function createInvoicePdfBlob(){
   clone.querySelectorAll(".sumrow").forEach(el=>{el.style.fontSize="10px";el.style.lineHeight="1.15";});
   clone.querySelectorAll(".sumrow span").forEach(el=>{el.style.padding="3px 5px";});
   const words=clone.querySelector("#pWords");if(words){words.style.fontFamily="Arial, sans-serif";words.style.fontSize="9px";words.style.lineHeight="1.2";}
-  clone.querySelectorAll("#dynamicStamp,#dynamicSignature").forEach(el=>{el.style.transform="none";el.style.objectFit="contain";el.style.objectPosition="center center";});
+  clone.querySelectorAll("#dynamicStamp,#dynamicSignature").forEach(el=>{el.style.transform="none";el.style.objectFit="contain";el.style.objectPosition="center center";el.style.maxWidth="none";el.style.maxHeight="none";});
+  // Export-only correction: keep the signature to the right of the stamp so the two graphics never pile up or look like one swollen image.
+  const pdfStamp=clone.querySelector("#dynamicStamp"),pdfSignature=clone.querySelector("#dynamicSignature");
+  if(pdfStamp&&pdfSignature){
+    const sl=parseFloat(pdfStamp.style.left)||10.5, sw=parseFloat(pdfStamp.style.width)||30;
+    const sigLeft=parseFloat(pdfSignature.style.left)||44, sigWidth=parseFloat(pdfSignature.style.width)||18;
+    if(sigLeft < sl+sw-1){pdfSignature.style.left=Math.min(76,sl+sw+2)+"%";pdfSignature.style.width=Math.min(sigWidth,100-(sl+sw+2)-2)+"%";}
+    pdfSignature.style.top="78%";pdfSignature.style.height="7%";
+  }
   clone.querySelectorAll("*").forEach(el=>{el.style.pointerEvents="none";});
   const holder=document.createElement("div");holder.style.cssText="position:fixed;left:-20000px;top:0;width:794px;height:1123px;overflow:hidden;background:#fff;z-index:-1";holder.appendChild(clone);document.body.appendChild(holder);
   try{
@@ -304,7 +312,7 @@ function updateStamp(){
  img.style.left=left+"%"; img.style.top=top+"%"; img.style.width=width+"%"; img.style.height=height+"%";
  try{localStorage.setItem("zeeInvoiceStamp",JSON.stringify({left,top,width,height}));}catch(e){}
 }
-function resetStampPosition(){document.getElementById("stampLeft").value=10.5;document.getElementById("stampTop").value=78.5;document.getElementById("stampWidth").value=30;document.getElementById("stampHeight").value=13.5;updateStamp();}
+function resetStampPosition(){document.getElementById("stampLeft").value=10.5;document.getElementById("stampTop").value=78.5;document.getElementById("stampWidth").value=27;document.getElementById("stampHeight").value=12;updateStamp();}
 try{const stampSettings=JSON.parse(localStorage.getItem("zeeInvoiceStamp")||"null");if(stampSettings){for(const k of ["left","top","width","height"]){const el=document.getElementById("stamp"+k[0].toUpperCase()+k.slice(1));if(el&&stampSettings[k]!==undefined)el.value=stampSettings[k];}}}catch(e){}
 loadSavedStampImage();
 updateStamp();
@@ -439,7 +447,7 @@ document.getElementById("signatureUpload").addEventListener("change",function(e)
   };reader.readAsDataURL(file);
 });
 function updateSignature(){const img=document.getElementById("dynamicSignature");const left=document.getElementById("sigLeft").value,top=document.getElementById("sigTop").value,width=document.getElementById("sigWidth").value,height=document.getElementById("sigHeight").value;img.style.left=left+"%";img.style.top=top+"%";img.style.width=width+"%";img.style.height=height+"%";try{localStorage.setItem("zeeInvoiceSignaturePosition",JSON.stringify({left,top,width,height}));}catch(e){}}
-function resetSignaturePosition(){document.getElementById("sigLeft").value=42;document.getElementById("sigTop").value=78;document.getElementById("sigWidth").value=23;document.getElementById("sigHeight").value=9;updateSignature();}
+function resetSignaturePosition(){document.getElementById("sigLeft").value=44;document.getElementById("sigTop").value=78;document.getElementById("sigWidth").value=18;document.getElementById("sigHeight").value=7;updateSignature();}
 try{const p=JSON.parse(localStorage.getItem("zeeInvoiceSignaturePosition")||"null");if(p)for(const k of ["left","top","width","height"]){const el=document.getElementById("sig"+k[0].toUpperCase()+k.slice(1));if(el&&p[k]!==undefined)el.value=p[k];}}catch(e){}
 loadSavedSignatureImage();updateSignature();
 
