@@ -104,14 +104,19 @@ body.preview-mode .paper{width:100%;max-width:595px}
   .bg{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
 .overlay{position:absolute;z-index:2}.stamp-sign-clear{position:absolute;left:15%;top:73%;width:18%;height:10%;object-fit:contain;z-index:3;pointer-events:none}.signature-art{position:absolute;left:36%;top:75%;width:23%;height:8%;object-fit:contain;z-index:3;pointer-events:none}
-</style></head>
+
+.pdf-export-clone{width:210mm!important;height:297mm!important;max-width:none!important;aspect-ratio:auto!important;position:relative!important;margin:0!important;padding:0!important;overflow:hidden!important;box-shadow:none!important;background:#fff!important}
+.pdf-export-clone img{max-width:none}
+@media print{.top,.panel,#arrangeStatus{display:none!important}}
+</style><script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
 <body>
 <div class="top">
   <div class="brand"><strong>SEE BAS</strong><span> TAX INVOICE MAKER</span></div>
   <div class="top-actions">
     <button id="btnPreview" type="button" onclick="showPreview()">Preview Invoice →</button>
     <button id="btnEdit" type="button" class="secondary" onclick="showEditor()" hidden>← Edit Details</button>
-    <button id="btnPrint" type="button" onclick="printInvoice()" hidden>Print A4 / Save PDF</button>
+    <button id="btnPrint" type="button" onclick="printInvoice()" hidden>Save PDF</button>
     <button id="btnShare" type="button" class="secondary" onclick="shareInvoice()" hidden>Share PDF</button>
     <button id="btnArrange" type="button" class="secondary" onclick="toggleArrange()" hidden>Arrange Stamp / Signature</button>
     <button id="btnSave" type="button" class="secondary" onclick="saveInvoice()">Save Invoice</button>
@@ -189,25 +194,36 @@ function addRow(){items.push({desc:"",qty:1,rate:0});renderEditor();render()}
 function renderEditor(){document.getElementById("editorRows").innerHTML=items.map((x,i)=>`<div style="border:1px solid #ddd;padding:8px;margin:7px 0;border-radius:7px"><b>Item ${i+1}</b><label>Description</label><textarea oninput="items[${i}].desc=this.value;render()">${esc(x.desc)}</textarea><div class="row"><div><label>Qty / trip</label><input type="number" min="0" step="any" value="${x.qty}" oninput="items[${i}].qty=+this.value;render()"></div><div><label>Rate (AED)</label><input type="number" min="0" step="any" value="${x.rate}" oninput="items[${i}].rate=+this.value;render()"></div></div><button class="secondary" style="margin-top:7px" onclick="items.splice(${i},1);renderEditor();render()">Remove item</button></div>`).join("")}
 function showPreview(){render();document.body.classList.add("preview-mode");document.getElementById("btnPreview").hidden=true;document.getElementById("btnEdit").hidden=false;document.getElementById("btnPrint").hidden=false;document.getElementById("btnShare").hidden=false;document.getElementById("btnArrange").hidden=false;document.getElementById("btnSave").hidden=true;document.getElementById("btnHistory").hidden=true;document.getElementById("btnReset").hidden=true;window.scrollTo({top:0,behavior:"smooth"})}
 function showEditor(){if(document.getElementById("paper").classList.contains("arranging"))toggleArrange();document.body.classList.remove("preview-mode");document.getElementById("btnPreview").hidden=false;document.getElementById("btnEdit").hidden=true;document.getElementById("btnPrint").hidden=true;document.getElementById("btnShare").hidden=true;document.getElementById("btnArrange").hidden=true;document.getElementById("btnSave").hidden=false;document.getElementById("btnHistory").hidden=false;document.getElementById("btnReset").hidden=false;window.scrollTo({top:0,behavior:"smooth"})}
-function printInvoice(){
-  // Must call print synchronously from the user's tap; delayed calls can be blocked on iPhone Safari.
+function prepareInvoiceForExport(){
   const paper=document.getElementById("paper");
   if(paper.classList.contains("arranging"))toggleArrange();
   render();
-  if(!document.body.classList.contains("preview-mode")){
-    document.body.classList.add("preview-mode");
-    document.getElementById("btnPreview").hidden=true;
-    document.getElementById("btnEdit").hidden=false;
-    document.getElementById("btnPrint").hidden=false;
-    document.getElementById("btnShare").hidden=false;
-    document.getElementById("btnArrange").hidden=false;
-    document.getElementById("btnSave").hidden=true;
-    document.getElementById("btnHistory").hidden=true;
-    document.getElementById("btnReset").hidden=true;
-  }
-  if(typeof window.print!=="function"){alert("Printing is not supported in this browser. Open this invoice in Safari or Chrome and try again.");return}
-  window.focus();
-  window.print();
+  if(!document.body.classList.contains("preview-mode"))showPreview();
+  return paper;
+}
+function safeInvoiceFilename(){
+  const no=(document.getElementById("invno").value||"Invoice").trim().replace(/[^a-zA-Z0-9_-]+/g,"-");
+  return "See-Bas-Invoice-"+no+".pdf";
+}
+async function createInvoicePdfBlob(){
+  const paper=prepareInvoiceForExport();
+  if(typeof window.html2pdf!=="function")throw new Error("PDF engine did not load. Open the app with an internet connection, then try again.");
+  const clone=paper.cloneNode(true);
+  clone.id="pdfExportPaper";clone.classList.add("pdf-export-clone");clone.classList.remove("arranging");
+  Object.assign(clone.style,{width:"210mm",height:"297mm",maxWidth:"none",aspectRatio:"auto",position:"relative",left:"auto",top:"auto",transform:"none",margin:"0",boxShadow:"none"});
+  clone.querySelectorAll("*").forEach(el=>{el.style.pointerEvents="none";if(el.classList&&el.classList.contains("editable"))el.style.outline="none"});
+  const holder=document.createElement("div");holder.style.cssText="position:fixed;left:-12000px;top:0;width:210mm;height:297mm;overflow:hidden;background:#fff;z-index:-1";holder.appendChild(clone);document.body.appendChild(holder);
+  try{
+    await Promise.all(Array.from(clone.querySelectorAll("img")).map(img=>img.complete&&img.naturalWidth>0?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;setTimeout(resolve,4000)})));
+    const worker=window.html2pdf().set({margin:0,filename:safeInvoiceFilename(),image:{type:"jpeg",quality:0.98},html2canvas:{scale:2,useCORS:true,allowTaint:true,backgroundColor:"#ffffff",logging:false,scrollX:0,scrollY:0,windowWidth:794,windowHeight:1123},jsPDF:{unit:"mm",format:"a4",orientation:"portrait",compress:true},pagebreak:{mode:["avoid-all","css","legacy"]}}).from(clone).toPdf();
+    const pdf=await worker.get("pdf");return pdf.output("blob");
+  }finally{if(holder.parentNode)holder.parentNode.removeChild(holder)}
+}
+async function printInvoice(){
+  const button=document.getElementById("btnPrint"),old=button?button.textContent:"";
+  try{if(button){button.disabled=true;button.textContent="Creating PDF…"}const blob=await createInvoicePdfBlob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=safeInvoiceFilename();a.style.display="none";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);setHistoryStatus("PDF created. On iPhone, check Downloads or the Files app.")}
+  catch(e){alert("Could not create PDF: "+e.message);setHistoryStatus("PDF error: "+e.message)}
+  finally{if(button){button.disabled=false;button.textContent=old||"Save PDF"}}
 }
 function money(n){return Number(n||0).toFixed(2)}
 function amountInWordsAED(value){
@@ -334,26 +350,18 @@ async function openSavedInvoice(encodedNo){
   }catch(e){setHistoryStatus("Could not open invoice: "+e.message)}
 }
 function deleteSavedInvoice(encodedNo){let no=decodeURIComponent(encodedNo);if(!confirm("Delete the local saved copy of invoice "+no+"? This does not delete the Google Sheets record."))return;try{localStorage.setItem("zeeInvoiceHistory",JSON.stringify(localInvoices().filter(x=>String(x.invoiceNo)!==String(no))))}catch(e){}loadHistory()}
-function shareInvoice(){
-  // PDF-only sharing: open the native browser print interface directly from the tap.
-  // Desktop: choose Save as PDF. iPhone: open/expand the print preview, tap Share, then Save to Files or WhatsApp.
-  const paper=document.getElementById("paper");
-  if(paper.classList.contains("arranging"))toggleArrange();
-  render();
-  if(!document.body.classList.contains("preview-mode")){
-    document.body.classList.add("preview-mode");
-    document.getElementById("btnPreview").hidden=true;
-    document.getElementById("btnEdit").hidden=false;
-    document.getElementById("btnPrint").hidden=false;
-    document.getElementById("btnShare").hidden=false;
-    document.getElementById("btnArrange").hidden=false;
-    document.getElementById("btnSave").hidden=true;
-    document.getElementById("btnHistory").hidden=true;
-    document.getElementById("btnReset").hidden=true;
-  }
-  if(typeof window.print!=="function"){alert("PDF sharing needs a browser that supports printing. Open this invoice in Safari or Chrome.");return}
-  window.focus();
-  window.print();
+async function shareInvoice(){
+  const button=document.getElementById("btnShare"),old=button?button.textContent:"";
+  try{
+    if(button){button.disabled=true;button.textContent="Preparing PDF…"}
+    const blob=await createInvoicePdfBlob();const file=new File([blob],safeInvoiceFilename(),{type:"application/pdf"});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:"See Bas Tax Invoice"});setHistoryStatus("PDF shared successfully.");return;
+    }
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=safeInvoiceFilename();a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+    alert("Your PDF has been created. If the iPhone share sheet did not open, open the downloaded PDF in Files and tap Share.");setHistoryStatus("PDF created and downloaded. Open it from Files to share.");
+  }catch(e){if(e&&e.name==="AbortError"){setHistoryStatus("Sharing cancelled.");return}alert("Could not share PDF: "+(e.message||e));setHistoryStatus("PDF sharing error: "+(e.message||e))}
+  finally{if(button){button.disabled=false;button.textContent=old||"Share PDF"}}
 }
 function toggleArrange(){let paper=document.getElementById("paper"),on=!paper.classList.contains("arranging");paper.classList.toggle("arranging",on);document.getElementById("arrangeStatus").style.display=on?"block":"none";setHistoryStatus(on?"Arrange mode ON: drag the stamp or signature on the preview.":"Arrange mode OFF. Your stamp and signature positions are saved.")}
 const DEFAULT_SIGNATURE_SRC=document.getElementById("dynamicSignature").getAttribute("src");
